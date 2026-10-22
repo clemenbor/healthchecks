@@ -19,9 +19,12 @@ jobs:
       - name: Check ${{ matrix.site }}
         env:
           PING_URL: ${{ secrets[matrix.ping_secret] }}
+          SITE: ${{ matrix.site }}
         run: |
-          if curl -fsS -m 20 --retry 2 -o /dev/null "${{ matrix.site }}"; then
+          code=$(curl -sSL -m 30 --retry 2 -o /dev/null -w "%{http_code}" "$SITE" || echo "000")
+          echo "HTTP status for $SITE: $code"
+          if [ "$code" -ge 200 ] && [ "$code" -lt 400 ]; then
             curl -fsS -m 10 --retry 3 "$PING_URL"
           else
-            curl -fsS -m 10 --retry 3 "$PING_URL/fail"
+            curl -fsS -m 10 --retry 3 --data-raw "HTTP $code" "$PING_URL/fail"
           fi
